@@ -1,0 +1,82 @@
+package com.example.productservice.login.service.impl;
+
+
+
+import com.example.productservice.config.JwtTokenUtil;
+import com.example.productservice.login.domain.dto.JwtRequest;
+import com.example.productservice.login.domain.dto.JwtResponse;
+import com.example.productservice.login.domain.dto.RefreshTokenPayloadDto;
+import com.example.productservice.login.domain.dto.UserDto;
+import com.example.productservice.login.domain.model.BasicLogin;
+import com.example.productservice.login.service.AuthenService;
+import io.jsonwebtoken.Claims;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenServiceImpl implements AuthenService {
+
+
+
+    private final PasswordEncoder bcryptEncoder;
+
+    private final JwtTokenUtil jwtTokenUtil;
+
+
+
+    @Override
+    public UserDto login(JwtRequest request) {
+        BasicLogin basicLogin = new BasicLogin();
+        basicLogin.setId("1");
+        basicLogin.setUsername("kien");
+        basicLogin.setPassword(bcryptEncoder.encode("123456a@"));
+        if (ObjectUtils.isEmpty(basicLogin)){
+            throw new SecurityException("USER_NOT_FOUND");
+        }
+        UserDto userDto = new UserDto();
+        if (bcryptEncoder.matches(request.getPassword(), basicLogin.getPassword())) {
+            userDto.setId(basicLogin.getId());
+            userDto.setUsername(basicLogin.getUsername());
+        } else {
+            throw new SecurityException("UNAUTHORIZE");
+        }
+        return userDto;
+    }
+
+//    @Override
+//    public UserDto register(JwtRequest request) {
+//        //Check trùng username
+////        var existUser = userRepository.findByUsernameAndStatus(request.getUsername(),1);
+////        Assert.isNull(existUser,"User đã tồn tại");
+//        // Lưu tài khoản vừa tạo
+//        BasicLogin basicLogin = new BasicLogin();
+//        basicLogin.setId(UUID.randomUUID().toString());
+//        basicLogin.setUsername(request.getUsername());
+//        basicLogin.setPassword(bcryptEncoder.encode(request.getPassword()));
+//        basicLogin.setStatus(1);
+////        userRepository.save(basicLogin);
+////        return basicLogin.toDto();
+//        return null;
+//    }
+//
+    @Override
+    public JwtResponse refreshToken(RefreshTokenPayloadDto payload) {
+        //Check username
+        Claims claims = jwtTokenUtil.getAllClaimsFromToken(payload.getRefreshToken());
+        String username = claims.getSubject();
+        BasicLogin basicLogin = new BasicLogin();
+        basicLogin.setId("1");
+        basicLogin.setUsername("kien");
+        if (ObjectUtils.isEmpty(basicLogin)){
+            throw new SecurityException("USER_NOT_FOUND");
+        }
+        if (!"refreshToken".equals(claims.getAudience())) {
+            throw new SecurityException("REFRESH_TOKEN_INVALID");
+        }
+        JwtResponse jwtResponse = jwtTokenUtil.generateToken(basicLogin.getId(),username);
+        return jwtResponse;
+    }
+}
